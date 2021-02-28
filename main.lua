@@ -10,11 +10,15 @@ function love.load()
         damage = stat(10, 0, 0),
         speed = stat(100, 0, 0),
         mana_regen = stat(10, 0, 0),
-        mana_max = stat(100, 0, 0),
+        mana_max = stat(200, 0, 0),
         cast_speed = stat(1, 0, 0),
         damage = stat(1, 0, 0),
         x = 200,
         y = 200,
+        sweep = false,
+        sweep_time = 0,
+        post_sweep_time = 0,
+        melee_range = 40
     }
 
     char.spell = init_magic_ball()
@@ -99,9 +103,22 @@ end
 
 function restore_characer(char)
     char.cooldown = 0;
-    char.hp = 50;
+    char.hp = 100;
     char.mana = get_stat(char, 'mana_max')
 end
+
+function charge(char, x, y, dt)
+    local norm = math.sqrt((char.x-x) * (char.x-x) + (char.y-y) * (char.y - y))
+    local speed = get_stat(char, 'speed') * 5
+    
+    if char.mana > 10 then
+        change_char_mana(char, -dt * speed)
+        char.x = char.x + (-char.x + x) / norm * speed * dt
+        char.y = char.y + (-char.y + y) / norm * speed * dt
+    end
+end
+
+
 
 function reset_proj_and_enemies()
     last_projectile = 0;
@@ -135,6 +152,14 @@ function start_stage(stage)
     spawn_dummy_cluster(400, 400)
 end
 
+function hit(char, x, y)
+    if char.cooldown == 0 then
+        char.sweep = true
+        char.cooldown = 0.5
+        char.sweep_time = 0.5
+    end
+end
+
 function char_update(dt) 
     char.mana = char.mana + get_stat(char, 'mana_regen') * dt
     local mana_max = get_stat(char, 'mana_max')
@@ -150,6 +175,50 @@ function char_update(dt)
     end
     if char.cooldown < 0 then
         char.cooldown = 0
+    end
+
+    if char.sweep_time > 0 then
+        char.sweep_time = char.sweep_time - dt
+    end
+    if char.sweep_time <= 0 and char.sweep then
+        char.sweep = false
+        char.sweep_time = 0
+        char.post_sweep_time = 0.1
+
+
+        local x, y = love.mouse.getPosition( )
+        local dx = (x-char.x)
+        local dy = (y-char.y)
+        local alpha = math.atan(dy/dx)
+        if dx < 0 then
+            alpha = alpha + math.pi
+        end
+
+        for enemy = 0, last_enemy - 1 do
+            if enemy_is_alive[enemy] then
+                local ex = enemies_x[enemy]
+                local ey = enemies_y[enemy]
+                local dist = (ex - char.x) * (ex - char.x) + (ey - char.y) * (ey - char.y)
+                if dist <= char.melee_range * char.melee_range + 3 then
+                    local edx = (ex-char.x)
+                    local edy = (ey-char.y)
+                    local alpha2 = math.atan(edy/edx)
+                    if edx < 0 then
+                        alpha2 = alpha2 + math.pi
+                    end
+                    if math.abs(alpha2 - alpha) <= math.pi/4 + 0.1 then
+                        change_enemy_hp(enemy, -100)
+                    end
+                end
+            end
+        end
+    end
+
+    if char.post_sweep_time > 0 then
+        char.post_sweep_time = char.post_sweep_time - dt
+    end
+    if char.post_sweep_time <= 0 then 
+        char.post_sweep_time = 0
     end
 end
 
@@ -169,7 +238,7 @@ function spawn_projectile(sx, sy, x, y, bounce, proj_speed, time_left, origin, h
 end
 
 function enemy_send_projectile(i, tx, ty)
-    spawn_projectile(enemies_x[i], enemies_y[i], tx, ty, 0, 100, 100, nil, 1)
+    spawn_projectile(enemies_x[i], enemies_y[i], tx, ty, 0, 50, 1000, nil, 1)
 end
 
 function hit_enemy(proj, enemy)
@@ -190,20 +259,20 @@ function hit_player(proj)
         local x = char.x
         local y = char.y
         local t = math.random() * 2
-        spawn_projectile(x, y, x + math.sin(t * 3.14), y + math.cos(t * 3.14), projectiles_bounce[proj] - 1, cproj_speed, 100, -1, 0)
+        spawn_projectile(x, y, x + math.sin(t * 3.14), y + math.cos(t * 3.14), projectiles_bounce[proj] - 1, proj_speed, 100, -1, 0)
         local t = math.random() * 2
-        spawn_projectile(x, y, x + math.sin(t * 3.14), y + math.cos(t * 3.14), projectiles_bounce[proj] - 1, cproj_speed, 100, -1, 0)
+        spawn_projectile(x, y, x + math.sin(t * 3.14), y + math.cos(t * 3.14), projectiles_bounce[proj] - 1, proj_speed, 100, -1, 0)
     end
 end
 
 function spawn_dummy(x, y)
     enemies_x[last_enemy] = x
     enemies_y[last_enemy] = y
-    enemies_speed[last_enemy] = 20
+    enemies_speed[last_enemy] = 100
     enemies_hp[last_enemy] = 20
     enemy_is_alive[last_enemy] = true
-    enemies_cooldown[last_enemy] = 0;
-    enemies_cast_speed[last_enemy] = 1
+    enemies_cooldown[last_enemy] = 1;
+    enemies_cast_speed[last_enemy] = 0.5
     
     last_enemy = last_enemy + 1
 
@@ -233,14 +302,14 @@ end
 
 function update_enemy(i, dt)
     if enemy_is_alive[i] then
-        move_to_player(i, dt)
+        -- move_to_player(i, dt)
         enemy_shoot(i, dt)
     end
 end
 
 function spawn_dummy_cluster(x, y)
-    for i = -1, 1 do
-        for j = -1, 1 do
+    for i = -3, 3 do
+        for j = -3, 3 do
             spawn_dummy(x + i * 40, y + j * 40)
         end
     end
@@ -251,6 +320,7 @@ function change_enemy_hp(i, dh)
     if enemies_hp[i] <= 0 then
         enemy_is_alive[i] = false
         enemies_left = enemies_left - 1
+        points = points + 1
     end
 end
 
@@ -274,6 +344,23 @@ function change_char_mana(char, dm)
 end
 
 function love.draw()
+    
+    love.graphics.setColor(1 * char.sweep_time, 1 * char.sweep_time, 0)
+    if char.post_sweep_time > 0 then
+        love.graphics.setColor(1, 1, 0)
+    end
+    local x, y = love.mouse.getPosition( )
+    local dx = (x-char.x)
+    local dy = (y-char.y)
+    local alpha = math.atan(dy/dx)
+    if dx < 0 then
+        alpha = alpha + math.pi
+    end
+    love.graphics.arc('fill', char.x, char.y, char.melee_range, alpha - math.pi/4, alpha + math.pi/4)
+
+
+
+
     love.graphics.setColor(1, 1, 1)
     love.graphics.circle('fill', char.x, char.y, 5)
     
@@ -309,6 +396,7 @@ function love.draw()
     love.graphics.print('damage  ' .. tostring(char.spell.damage * get_stat(char, 'damage')), 600, 200)
     love.graphics.print('speed  ' .. tostring(get_stat(char, 'speed')), 600, 215)
 
+    love.graphics.print('skill points  ' .. tostring(points), 600, 280)
     love.graphics.print('inc cast speed  press [1]', 600, 300)
     love.graphics.print('inc damage  press [2]', 600, 320)
     love.graphics.print('inc mana regen  press [3]', 600, 340)
@@ -317,13 +405,22 @@ end
 function love.update(dt)
 
     if love.keyboard.isDown('1') then
-        char.cast_speed.inc = char.cast_speed.inc + 0.5
+        if points > 0 then
+            char.cast_speed.inc = char.cast_speed.inc + 0.01
+            points = points - 1
+        end
     end
     if love.keyboard.isDown('3') then
-        char.mana_regen.inc = char.mana_regen.inc + 0.5
+        if points > 0 then
+            char.mana_regen.inc = char.mana_regen.inc + 0.01
+            points = points - 1
+        end
     end
     if love.keyboard.isDown('2') then
-        char.damage.inc = char.mana_regen.inc + 0.5
+        if points > 0 then
+            char.damage.inc = char.mana_regen.inc + 0.01
+            points = points - 1
+        end
     end
 
     if restart then
@@ -376,22 +473,28 @@ function love.update(dt)
 
     if love.mouse.isDown(1) then
         x, y = love.mouse.getPosition( )
-        cast(char, x, y)
+        -- cast(char, x, y)
+        hit(char, x, y)
     end
 
     local speed = get_stat(char, 'speed')
 
-    if love.keyboard.isDown('w') then
-        char.y = char.y - speed * dt
-    end
-    if love.keyboard.isDown('s') then
-        char.y = char.y + speed * dt
-    end
-    if love.keyboard.isDown('a') then
-        char.x = char.x - speed * dt
-    end
-    if love.keyboard.isDown('d') then
-        char.x = char.x + speed * dt
+    if love.keyboard.isDown('lshift') then
+        x, y = love.mouse.getPosition( )
+        charge(char, x, y, dt)
+    else
+        if love.keyboard.isDown('w') then
+            char.y = char.y - speed * dt
+        end
+        if love.keyboard.isDown('s') then
+            char.y = char.y + speed * dt
+        end
+        if love.keyboard.isDown('a') then
+            char.x = char.x - speed * dt
+        end
+        if love.keyboard.isDown('d') then
+            char.x = char.x + speed * dt
+        end
     end
 
     
@@ -399,6 +502,7 @@ end
 
 function love.mousepressed(x, y, button, istouch)
     if (button == 1) then
-        cast(char, x, y)
+        -- cast(char, x, y)
+        hit(char, x, y)
     end
 end
