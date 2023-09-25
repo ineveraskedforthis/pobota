@@ -1,0 +1,11 @@
+---@class Spell
+---@field on_cast fun(caster: Character, target_position:vec2)
+---@field on_update_projectile fun(dt: number, caster: Character, projectile: Projectile)
+---@field on_update_caster fun(dt: number, caster: Character)
+---@field on_hit fun(projectile: Projectile, target: Character)
+---@field mana_cost fun(caster: Character): number
+---@field cooldown fun(caster: Character): number
+---@field cast_time fun(caster: Character): number
+---@field damage fun(caster: Character): number
+---@field render_cast fun(caster: Character)
+---@field render_projectile fun(projectile: Projectile)

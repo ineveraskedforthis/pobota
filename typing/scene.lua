@@ -1,0 +1,5 @@
+---@class Scene
+---@field load fun()
+---@field draw fun()
+---@field keypressed fun(key, scancode, isrepea)
+---@field update fun(dt)

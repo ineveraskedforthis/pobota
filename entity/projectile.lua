@@ -1,0 +1,7 @@
+---@class Projectile
+---@field position vec2
+---@field speed vec2
+---@field size number
+---@field damage number
+---@field caster Character
+---@field spell Spell
