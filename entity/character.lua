@@ -30,7 +30,7 @@ return function()
     character.dexterity = 10
     character.intelligence = 10
 
-    character.model = "circle"
+    character.model = "ball"
 
     character.position = {x = 0, y = 0}
     character.target = {x = 0, y = 0}

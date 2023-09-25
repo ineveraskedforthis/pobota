@@ -4,6 +4,8 @@ local values = require "values.character_stats"
 ---@param character Character
 return function(character, x, y, width, height)
 
+    love.graphics.setColor(0, 0, 0)
+
     local hp_ratio = character.hp / values.max_hp(character)
     ratio_bar(x, y, width, height / 2.1, hp_ratio, {1, 0, 0}, {0.5, 0.5, 0.5})
 

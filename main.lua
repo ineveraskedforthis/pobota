@@ -13,18 +13,36 @@ function love.load()
     love.window.setMode( WIDTH, HEIGHT)
 
     GAME = require "global.game"
-    PORTRAIT = love.graphics.newImage("p.png", {linear = false})
     GAME.scene = require "scenes.character_selection"
     GAME.player = require "entity.character"()
     -- GAME.player.main_spell = require "skills.magic_ball"
     GAME.characters[GAME.player] = GAME.player
+
+
+    ---@type table<string, love.Image>
+    ASSETS = {}
+    ASSETS['portrait_ball'] = love.graphics.newImage("portrait_ball.png")
+    ASSETS['portrait_character_1'] = love.graphics.newImage("portrait_character_1.png")
+    ASSETS['portrait_character_2'] = love.graphics.newImage("portrait_character_2.png")
+
+
+    ASSETS['ball'] = nil
+    ASSETS['character_1'] = love.graphics.newImage("character_1.png")
+    ASSETS['character_2'] = love.graphics.newImage("character_2.png")
+
+    ASSETS['background_desert'] = love.graphics.newImage("background_desert.png")
+
 
     RESTART = false
 end
 
 
 function love.draw()
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.draw(ASSETS['background_desert'], 0, 0, 0)
+
     local status_margin = WIDTH * 0.2
+    require "ui.portait"(GAME.player.model, {x = status_margin - 50, y = HEIGHT - 50, w = 50, h = 50})
     require "ui.status"(GAME.player, status_margin, HEIGHT - 50, WIDTH - status_margin * 2, 50)
     GAME.scene.draw()
     require "scenes.basic"()

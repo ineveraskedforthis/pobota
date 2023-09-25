@@ -39,12 +39,14 @@ function scene.keypressed(key, scancode, isrepeat)
 
     if key == 'return' and character_magic_ball then
         GAME.player.main_spell = require "skills.magic_ball"
+        GAME.player.model = "character_1"
         local new_scene = require "scenes.main_menu"
         require "scenes.switch_scene"(new_scene)
     end
 
     if key == 'return' and character_wither then
         GAME.player.main_spell = require "skills.wither"
+        GAME.player.model = "character_2"
         local new_scene = require "scenes.main_menu"
         require "scenes.switch_scene"(new_scene)
     end
